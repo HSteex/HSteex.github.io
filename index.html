@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backloggd Wheel 🎮</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --surface2: #22222e;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8e6f0;
+    --muted: #888;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --success: #4ade80;
+    --danger: #f87171;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(135deg, #a78bfa, #7c6af7, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 1.5rem;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 1rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: var(--accent2); }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status {
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    min-height: 1.1em;
+    color: var(--muted);
+  }
+  .status.err { color: var(--danger); }
+  .status.ok { color: var(--success); }
+
+  /* Wheel section */
+  .wheel-section {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 520px;
+    gap: 1.5rem;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #wheel-canvas {
+    border-radius: 50%;
+    display: block;
+    filter: drop-shadow(0 0 32px rgba(124,106,247,0.35));
+  }
+
+  /* pointer */
+  .pointer {
+    position: absolute;
+    top: 50%;
+    right: -4px;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    border-right: 30px solid #fff;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.5));
+    z-index: 10;
+  }
+
+  .spin-btn {
+    font-size: 1.1rem;
+    padding: 0.8rem 2.5rem;
+    border-radius: 50px;
+    background: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  .result-card {
+    background: var(--surface2);
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    text-align: center;
+    width: 100%;
+    display: none;
+  }
+
+  .result-card .label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.4rem;
+  }
+
+  .result-card .game-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: -0.02em;
+  }
+
+  .game-list {
+    margin-top: 1rem;
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .game-list::-webkit-scrollbar { width: 4px; }
+  .game-list::-webkit-scrollbar-track { background: transparent; }
+  .game-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .game-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    text-align: left;
+  }
+
+  .game-item:hover { border-color: var(--accent); color: var(--text); }
+
+  .game-item .remove {
+    margin-left: auto;
+    opacity: 0.3;
+    font-size: 0.75rem;
+    transition: opacity 0.15s;
+  }
+  .game-item:hover .remove { opacity: 0.8; }
+
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .list-header span { font-size: 0.8rem; color: var(--muted); }
+  .list-header button {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    border-radius: 6px;
+  }
+  .list-header button:hover { color: var(--text); }
+
+  footer {
+    margin-top: 2rem;
+    font-size: 0.75rem;
+    color: #555;
+    text-align: center;
+  }
+  footer a { color: #666; text-decoration: none; }
+  footer a:hover { color: var(--accent2); }
+
+  @media (max-width: 400px) {
+    h1 { font-size: 1.4rem; }
+    .spin-btn { padding: 0.7rem 1.8rem; font-size: 1rem; }
+    #wheel-canvas { width: 280px !important; height: 280px !important; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🎮 Backloggd Wheel</h1>
+<p class="subtitle">Lascia che il destino scelga il tuo prossimo gioco</p>
+
+<div class="card">
+  <div class="input-row">
+    <input type="text" id="username-input" placeholder="Username Backloggd..." autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="fetch-btn" onclick="fetchBacklog()">Carica</button>
+  </div>
+  <p class="status" id="status"></p>
+
+  <div id="game-list-wrap" style="display:none">
+    <div class="list-header">
+      <span id="count-label"></span>
+      <button onclick="buildWheel()">↺ Aggiorna ruota</button>
+    </div>
+    <div class="game-list" id="game-list"></div>
+  </div>
+</div>
+
+<div class="wheel-section" id="wheel-section">
+  <div class="wheel-wrap">
+    <canvas id="wheel-canvas" width="360" height="360"></canvas>
+    <div class="pointer"></div>
+  </div>
+  <button class="spin-btn" id="spin-btn" onclick="spin()">🎲 Gira!</button>
+  <div class="result-card" id="result-card">
+    <div class="label">Hai vinto… devi giocare a</div>
+    <div class="game-title" id="result-text"></div>
+  </div>
+</div>
+
+<footer>
+  Usa il proxy <a href="https://allorigins.win" target="_blank">allorigins.win</a> per leggere backloggd.com · Dati non ufficiali
+</footer>
+
+<script>
+// ─── State ──────────────────────────────────────────────────────────────────
+let games = [];
+let spinning = false;
+let currentAngle = 0;
+
+// ─── Palette ────────────────────────────────────────────────────────────────
+const COLORS = [
+  '#6d28d9','#4f46e5','#0891b2','#0d9488','#059669',
+  '#d97706','#dc2626','#db2777','#7c3aed','#2563eb',
+  '#065f46','#9a3412','#1e3a5f','#4a1d96','#701a75',
+];
+
+function color(i) { return COLORS[i % COLORS.length]; }
+
+// ─── Fetch backlog ───────────────────────────────────────────────────────────
+async function fetchBacklog() {
+  const input = document.getElementById('username-input');
+  const username = input.value.trim();
+  if (!username) { setStatus('Inserisci un username!', 'err'); return; }
+
+  setStatus('Caricamento…');
+  setDisabled(true);
+
+  try {
+    // Fetch via allorigins to bypass CORS
+    const url = `https://www.backloggd.com/u/${encodeURIComponent(username)}/backlog/`;
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxy);
+    if (!res.ok) throw new Error('Errore di rete');
+    const data = await res.json();
+    const html = data.contents;
+
+    if (!html || html.includes('Page Not Found') || html.includes('User not found')) {
+      throw new Error(`Utente "${username}" non trovato su Backloggd`);
+    }
+
+    const parsed = parseBacklog(html);
+    if (parsed.length === 0) {
+      throw new Error('Backlog vuoto o non pubblico per questo utente');
+    }
+
+    games = parsed;
+    renderGameList();
+    buildWheel();
+    setStatus(`✓ ${games.length} giochi caricati dal backlog`, 'ok');
+    document.getElementById('wheel-section').style.display = 'flex';
+
+  } catch (e) {
+    setStatus(e.message, 'err');
+    console.error(e);
+  } finally {
+    setDisabled(false);
+  }
+}
+
+function parseBacklog(html) {
+  // Parse game titles from Backloggd HTML
+  const found = [];
+  const seen = new Set();
+
+  // Method 1: game cards with aria-label or title attributes
+  const patterns = [
+    /aria-label="([^"]+?)"\s+href="\/games\//g,
+    /class="[^"]*game[^"]*"[^>]*>\s*<[^>]+title="([^"]+)"/g,
+    /href="\/games\/[^"]+"\s+[^>]*title="([^"]+)"/g,
+  ];
+
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      const t = decodeHTMLEntities(m[1].trim());
+      if (t && !seen.has(t) && t.length > 1 && t.length < 120) {
+        seen.add(t);
+        found.push(t);
+      }
+    }
+  }
+
+  // Method 2: game-details divs / headings
+  if (found.length === 0) {
+    const re2 = /<a[^>]+href="\/games\/[0-9]+-[^"]+?"[^>]*>([^<]{2,80})<\/a>/g;
+    let m;
+    while ((m = re2.exec(html)) !== null) {
+      const t = decodeHTMLEntities(m[1].trim());
+      if (t && !seen.has(t) && !/^\s*$/.test(t) && !/^(Log in|Sign up|Home|Games|Lists)$/.test(t)) {
+        seen.add(t);
+        found.push(t);
+      }
+    }
+  }
+
+  return found;
+}
+
+function decodeHTMLEntities(str) {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n));
+}
+
+// ─── Game list UI ────────────────────────────────────────────────────────────
+function renderGameList() {
+  const list = document.getElementById('game-list');
+  const wrap = document.getElementById('game-list-wrap');
+  const label = document.getElementById('count-label');
+  list.innerHTML = '';
+  label.textContent = `${games.length} giochi`;
+  wrap.style.display = 'block';
+
+  games.forEach((g, i) => {
+    const item = document.createElement('div');
+    item.className = 'game-item';
+    item.innerHTML = `
+      <span style="width:8px;height:8px;border-radius:50%;background:${color(i)};flex-shrink:0"></span>
+      <span>${escapeHtml(g)}</span>
+      <span class="remove" onclick="removeGame(${i}, event)">✕</span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function removeGame(i, e) {
+  e.stopPropagation();
+  games.splice(i, 1);
+  renderGameList();
+  if (games.length > 0) buildWheel();
+  else {
+    document.getElementById('wheel-section').style.display = 'none';
+    document.getElementById('count-label').textContent = '0 giochi';
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Wheel drawing ───────────────────────────────────────────────────────────
+function buildWheel() {
+  const canvas = document.getElementById('wheel-canvas');
+  drawWheel(canvas, currentAngle);
+}
+
+function drawWheel(canvas, rotation) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const cx = W / 2, cy = W / 2;
+  const R = W / 2 - 4;
+  const n = games.length;
+
+  ctx.clearRect(0, 0, W, W);
+
+  if (n === 0) return;
+
+  const arc = (2 * Math.PI) / n;
+
+  for (let i = 0; i < n; i++) {
+    const start = rotation + i * arc - Math.PI / 2;
+    const end = start + arc;
+
+    // Slice
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, start, end);
+    ctx.closePath();
+    ctx.fillStyle = color(i);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Label
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(start + arc / 2);
+
+    const maxLen = 22;
+    const label = games[i].length > maxLen ? games[i].slice(0, maxLen - 1) + '…' : games[i];
+    const dist = R * 0.62;
+    const fontSize = n > 20 ? 9 : n > 12 ? 11 : 13;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = `600 ${fontSize}px -apple-system, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 3;
+    ctx.fillText(label, dist - R + 12, 0);
+    ctx.restore();
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
+  ctx.fillStyle = '#0f0f13';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ─── Spin ────────────────────────────────────────────────────────────────────
+function spin() {
+  if (spinning || games.length === 0) return;
+  spinning = true;
+
+  document.getElementById('spin-btn').disabled = true;
+  document.getElementById('result-card').style.display = 'none';
+
+  const canvas = document.getElementById('wheel-canvas');
+  const totalSpins = 6 + Math.random() * 6; // 6-12 full rotations
+  const extraAngle = Math.random() * 2 * Math.PI;
+  const totalAngle = totalSpins * 2 * Math.PI + extraAngle;
+
+  const duration = 3500 + Math.random() * 1500;
+  const start = performance.now();
+  const startAngle = currentAngle;
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  function frame(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    const angle = startAngle + totalAngle * easeOut(t);
+    currentAngle = angle % (2 * Math.PI);
+    drawWheel(canvas, currentAngle);
+
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      spinning = false;
+      document.getElementById('spin-btn').disabled = false;
+      showResult();
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+
+function showResult() {
+  const n = games.length;
+  const arc = (2 * Math.PI) / n;
+
+  // The pointer points from the right (angle 0 in canvas coords = east)
+  // After rotation, the slice at the right of center is the winner
+  // The wheel is drawn starting at -π/2 + rotation
+  // A slice i occupies angles: rotation - π/2 + i*arc  to  rotation - π/2 + (i+1)*arc
+  // Pointer is at angle 0 (east), relative to wheel: angle 0 - (rotation - π/2) = π/2 - rotation
+  const pointerAngle = ((Math.PI / 2 - currentAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const idx = Math.floor(pointerAngle / arc) % n;
+  const winner = games[idx];
+
+  const card = document.getElementById('result-card');
+  document.getElementById('result-text').textContent = winner;
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function setStatus(msg, type = '') {
+  const s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = 'status' + (type ? ' ' + type : '');
+}
+
+function setDisabled(v) {
+  document.getElementById('fetch-btn').disabled = v;
+  document.getElementById('username-input').disabled = v;
+}
+
+// Enter key on input
+document.getElementById('username-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fetchBacklog();
+});
+</script>
+</body>
+</html>
