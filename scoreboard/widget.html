@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabellone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --scale: 1;
+    --bg: rgba(14, 16, 22, 0.92);
+    --bg2: rgba(255, 255, 255, 0.06);
+    --text: #f4f5f7;
+    --muted: #9aa0ab;
+    --home: #d32f2f;
+    --away: #1976d2;
+  }
+
+  html, body { background: transparent; overflow: hidden; }
+
+  body {
+    font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    color: var(--text);
+    padding: 10px;
+  }
+
+  .board {
+    display: inline-flex;
+    align-items: stretch;
+    height: 64px;
+    background: var(--bg);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    transform: scale(var(--scale));
+    transform-origin: top left;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .board.ready { opacity: 1; }
+
+  .team {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+  }
+  .team.away { flex-direction: row-reverse; }
+
+  .bar { align-self: stretch; width: 8px; margin: 0 -16px; flex-shrink: 0; }
+  .home .bar { background: var(--home); margin-right: 0; }
+  .away .bar { background: var(--away); margin-left: 0; }
+
+  .logo { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
+  .logo[hidden] { display: none; }
+
+  .name {
+    font-size: 28px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+  }
+
+  .score {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    background: var(--bg2);
+    font-size: 40px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .score .sep { color: var(--muted); font-size: 30px; }
+  .score span.num { min-width: 0.6em; text-align: center; display: inline-block; }
+
+  .flash { animation: flash 1.2s ease-out; }
+  @keyframes flash {
+    0%   { transform: scale(1.6); color: #ffd54a; }
+    100% { transform: scale(1);   color: var(--text); }
+  }
+
+  .clock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .clock[hidden] { display: none; }
+  .period {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .time {
+    font-size: 34px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 2.9em;
+  }
+  .extra {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffd54a;
+    font-variant-numeric: tabular-nums;
+  }
+  .extra:empty { display: none; }
+</style>
+</head>
+<body>
+
+<div class="board" id="board">
+  <div class="team home">
+    <div class="bar"></div>
+    <img class="logo" id="home-logo" alt="" hidden>
+    <div class="name" id="home-name"></div>
+  </div>
+  <div class="score">
+    <span class="num" id="home-score">0</span>
+    <span class="sep">–</span>
+    <span class="num" id="away-score">0</span>
+  </div>
+  <div class="team away">
+    <div class="bar"></div>
+    <img class="logo" id="away-logo" alt="" hidden>
+    <div class="name" id="away-name"></div>
+  </div>
+  <div class="clock" id="clock-box">
+    <span class="period" id="period"></span>
+    <span class="time" id="time"></span>
+    <span class="extra" id="extra"></span>
+  </div>
+</div>
+
+<script type="module">
+import { onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { matchRef, normalize, periodInfo, clockDisplay, logoUrl } from "./common.js";
+
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+
+const scale = parseFloat(new URLSearchParams(location.search).get("scale"));
+if (scale > 0) root.style.setProperty("--scale", scale);
+
+let match = normalize(null);
+let first = true;
+
+// Se la lettura viene rifiutata (es. regole non ancora pubblicate) riprova
+function subscribe() {
+  onValue(matchRef, onMatch, err => {
+    console.error(err);
+    setTimeout(subscribe, 5000);
+  });
+}
+subscribe();
+
+function onMatch(snap) {
+  const prev = match;
+  match = normalize(snap.val());
+
+  for (const side of ["home", "away"]) {
+    const t = match[side];
+    $(`${side}-name`).textContent = t.name;
+    root.style.setProperty(`--${side}`, t.color);
+
+    const img = $(`${side}-logo`);
+    const url = logoUrl(t.logo);
+    if (!url) img.hidden = true;
+    else if (img.getAttribute("src") !== url) {
+      img.onload = () => { img.hidden = false; };
+      img.onerror = () => { img.hidden = true; };
+      img.src = url;
+    }
+
+    const el = $(`${side}-score`);
+    el.textContent = t.score;
+    if (!first && t.score > prev[side].score) {
+      el.classList.remove("flash");
+      void el.offsetWidth;
+      el.classList.add("flash");
+    }
+  }
+
+  const p = periodInfo(match.period);
+  $("period").textContent = p.id === "PRE" ? "" : p.short;
+  first = false;
+  tick();
+  $("board").classList.add("ready");
+}
+
+function tick() {
+  const { main, extra } = clockDisplay(match);
+  $("time").textContent = main;
+  $("time").hidden = !main;
+  $("extra").textContent = extra;
+  $("clock-box").hidden = !main && !$("period").textContent;
+}
+setInterval(tick, 250);
+</script>
+</body>
+</html>

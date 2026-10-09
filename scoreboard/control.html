@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1116">
+<title>Controllo Tabellone</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1116;
+    --surface: #181b23;
+    --surface2: #222632;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #eceef3;
+    --muted: #8b91a0;
+    --accent: #3ddc84;
+    --danger: #f2555a;
+    --warn: #ffd54a;
+    --home: #d32f2f;
+    --away: #1976d2;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  button {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.08s, filter 0.15s;
+  }
+  button:active { transform: scale(0.96); filter: brightness(1.2); }
+  button:disabled { opacity: 0.4; }
+
+  input, select {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    width: 100%;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input[type="color"] { padding: 2px; height: 42px; width: 56px; flex-shrink: 0; }
+
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin: 10px 0 4px; }
+
+  /* Topbar */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .topbar h1 { font-size: 1.1rem; }
+  .conn { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .conn.on::before { background: var(--accent); }
+  .topbar button { padding: 6px 10px; font-size: 0.8rem; }
+
+  /* Score */
+  .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .team-col { display: flex; flex-direction: column; gap: 8px; align-items: stretch; text-align: center; }
+  .team-name {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-bottom: 6px;
+    border-bottom: 4px solid var(--home);
+  }
+  .away .team-name { border-color: var(--away); }
+  .team-score { font-size: 3.6rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .plus { font-size: 1.6rem; padding: 18px; background: var(--home); border: none; }
+  .away .plus { background: var(--away); }
+  .minus { font-size: 1rem; padding: 8px; }
+
+  /* Clock */
+  .clock-display { text-align: center; margin-bottom: 12px; }
+  .clock-display .period { color: var(--muted); font-weight: 700; letter-spacing: 0.06em; }
+  .clock-display .time { font-size: 3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .clock-display .extra { color: var(--warn); font-weight: 700; font-size: 1.4rem; margin-left: 6px; }
+  .start { width: 100%; font-size: 1.3rem; padding: 18px; background: var(--accent); color: #062b14; border: none; }
+  .start.running { background: var(--warn); color: #2b2100; }
+  .adjust { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .adjust button { padding: 10px 0; font-size: 0.9rem; }
+
+  .periods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .periods button { padding: 10px 0; font-size: 0.85rem; }
+  .periods button.active { background: var(--text); color: var(--bg); }
+
+  /* Settings */
+  details summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "▾"; color: var(--muted); }
+  details[open] summary::after { content: "▴"; }
+  details[open] summary { margin-bottom: 4px; }
+  .team-settings { border-top: 1px solid var(--border); padding-top: 6px; margin-top: 10px; }
+  .team-settings h3 { font-size: 0.95rem; margin-top: 6px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .logo-preview { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+  .hint { font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+  .hint.err { color: var(--danger); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .danger { width: 100%; background: transparent; color: var(--danger); border-color: rgba(242, 85, 90, 0.4); }
+
+  .url-row { display: flex; gap: 8px; }
+  .url-row input { font-size: 0.8rem; }
+  .url-row button { flex-shrink: 0; }
+
+  /* Login */
+  #login { max-width: 360px; margin: 15vh auto 0; }
+  #login button { width: 100%; margin-top: 14px; background: var(--accent); color: #062b14; border: none; }
+  #login-err { color: var(--danger); font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ─── Login ─────────────────────────────────────────────────────────── -->
+<form class="card" id="login" hidden>
+  <h2>Accedi al pannello</h2>
+  <label for="email">Email</label>
+  <input type="email" id="email" autocomplete="username" required>
+  <label for="password">Password</label>
+  <input type="password" id="password" autocomplete="current-password" required>
+  <button type="submit">Entra</button>
+  <p id="login-err"></p>
+</form>
+
+<!-- ─── Pannello ──────────────────────────────────────────────────────── -->
+<main id="panel" hidden>
+  <div class="topbar">
+    <h1>⚽ Tabellone</h1>
+    <span class="conn" id="conn">offline</span>
+    <button id="logout">Esci</button>
+  </div>
+  <p class="hint" id="user-info" style="margin-top:-6px"></p>
+
+  <section class="card">
+    <div class="score-grid">
+      <div class="team-col home">
+        <div class="team-name" id="home-name"></div>
+        <div class="team-score" id="home-score">0</div>
+        <button class="plus" data-score="home" data-d="1">+1</button>
+        <button class="minus" data-score="home" data-d="-1">−1</button>
+      </div>
+      <div class="team-col away">
+        <div class="team-name" id="away-name"></div>
+        <div class="team-score" id="away-score">0</div>
+        <button class="plus" data-score="away" data-d="1">+1</button>
+        <button class="minus" data-score="away" data-d="-1">−1</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="clock-display">
+      <div class="period" id="period-label"></div>
+      <span class="time" id="time">00:00</span><span class="extra" id="extra"></span>
+    </div>
+    <button class="start" id="start">▶ Avvia</button>
+    <div class="adjust">
+      <button data-adj="-60000">−1'</button>
+      <button data-adj="-10000">−10"</button>
+      <button data-adj="10000">+10"</button>
+      <button data-adj="60000">+1'</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Periodo</h2>
+    <div class="periods" id="periods"></div>
+    <p class="hint">Cambiare periodo ferma e azzera il cronometro del periodo.</p>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary><h2 style="margin:0">Impostazioni</h2></summary>
+
+      <div class="two">
+        <div>
+          <label for="periodMinutes">Durata tempo (min)</label>
+          <input type="number" id="periodMinutes" min="1" max="90" inputmode="numeric">
+        </div>
+        <div>
+          <label for="extraMinutes">Durata supplementare (min)</label>
+          <input type="number" id="extraMinutes" min="1" max="30" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="team-settings" data-team="home">
+        <h3>Squadra di casa</h3>
+        <label>Nome</label>
+        <input type="text" data-field="name" maxlength="40">
+        <label>Colore e logo</label>
+        <div class="row">
+          <input type="color" data-field="color">
+          <select data-field="logo"></select>
+          <img class="logo-preview" alt="" hidden>
+        </div>
+      </div>
+
+      <div class="team-settings" data-team="away">
+        <h3>Squadra ospite</h3>
+        <label>Nome</label>
+        <input type="text" data-field="name" maxlength="40">
+        <label>Colore e logo</label>
+        <div class="row">
+          <input type="color" data-field="color">
+          <select data-field="logo"></select>
+          <img class="logo-preview" alt="" hidden>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button id="reload-logos" style="flex:1">↻ Aggiorna elenco loghi</button>
+        <button id="swap" style="flex:1">⇄ Inverti squadre</button>
+      </div>
+      <p class="hint" id="logo-hint">I loghi sono i file nella cartella <code>scoreboard/loghi/</code> del repo.</p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Widget per OBS</h2>
+    <div class="url-row">
+      <input type="text" id="widget-url" readonly>
+      <button id="copy-url">Copia</button>
+    </div>
+    <p class="hint">OBS → Fonte → Browser → incolla l'URL (es. larghezza 1000, altezza 100). Aggiungi <code>?scale=1.5</code> per ingrandire.</p>
+  </section>
+
+  <button class="danger" id="reset">Reset partita (punteggi, periodo, tempo)</button>
+</main>
+
+<script type="module">
+import { ref, onValue, set, update, runTransaction, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { app, db, matchRef, PERIODS, DEFAULT_MATCH, normalize, periodInfo, clockDisplay, elapsedMs, serverNow, logoUrl }
+  from "./common.js";
+import { logoRepo } from "./firebase-config.js";
+
+const $ = id => document.getElementById(id);
+const auth = getAuth(app);
+const r = path => ref(db, `match/${path}`);
+
+let match = normalize(null);
+let unsubscribe = null;
+let logoFiles = [];
+const CUSTOM = "__custom__";
+
+// ─── Auth ───────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, user => {
+  $("login").hidden = !!user;
+  $("panel").hidden = !user;
+  $("user-info").textContent = user ? `${user.email} · UID ${user.uid}` : "";
+  if (user && !unsubscribe) start();
+  if (!user && unsubscribe) { unsubscribe(); unsubscribe = null; }
+});
+
+$("login").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("login-err").textContent = "";
+  try {
+    await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
+  } catch (err) {
+    $("login-err").textContent = "Accesso non riuscito: " + (err.code || err.message);
+  }
+});
+
+$("logout").onclick = () => signOut(auth);
+
+// ─── Sync ───────────────────────────────────────────────────────────────────
+function start() {
+  unsubscribe = onValue(matchRef, snap => {
+    if (!snap.exists()) { set(matchRef, DEFAULT_MATCH).catch(showError); return; }
+    match = normalize(snap.val());
+    render();
+  }, showError);
+  loadLogos();
+}
+
+onValue(ref(db, ".info/connected"), s => {
+  $("conn").classList.toggle("on", !!s.val());
+  $("conn").textContent = s.val() ? "online" : "offline";
+});
+
+function showError(err) {
+  console.error(err);
+  alert("Errore: " + (err.code || err.message) + "\nControlla le regole del database e il tuo UID.");
+}
+
+// ─── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  const root = document.documentElement;
+  for (const side of ["home", "away"]) {
+    const t = match[side];
+    $(`${side}-name`).textContent = t.name;
+    $(`${side}-score`).textContent = t.score;
+    root.style.setProperty(`--${side}`, t.color);
+
+    const box = document.querySelector(`.team-settings[data-team="${side}"]`);
+    for (const field of ["name", "color"]) {
+      const input = box.querySelector(`[data-field="${field}"]`);
+      if (document.activeElement !== input) input.value = t[field];
+    }
+    fillLogoSelect(box.querySelector('[data-field="logo"]'), t.logo);
+    const prev = box.querySelector(".logo-preview");
+    prev.hidden = !t.logo;
+    if (t.logo) prev.src = logoUrl(t.logo);
+  }
+
+  for (const k of ["periodMinutes", "extraMinutes"]) {
+    if (document.activeElement !== $(k)) $(k).value = match.settings[k];
+  }
+
+  const p = periodInfo(match.period);
+  $("period-label").textContent = p.label;
+  document.querySelectorAll("#periods button").forEach(b => b.classList.toggle("active", b.dataset.period === p.id));
+
+  const btn = $("start");
+  btn.disabled = !p.timed;
+  btn.classList.toggle("running", match.clock.running);
+  btn.textContent = match.clock.running ? "❚❚ Pausa" : "▶ Avvia";
+  document.querySelectorAll("[data-adj]").forEach(b => { b.disabled = !p.timed; });
+  tick();
+}
+
+function tick() {
+  const { main, extra } = clockDisplay(match);
+  $("time").textContent = main || "—";
+  $("extra").textContent = extra;
+}
+setInterval(tick, 250);
+
+// ─── Punteggio ──────────────────────────────────────────────────────────────
+document.querySelectorAll("[data-score]").forEach(b => {
+  b.onclick = () => {
+    const d = Number(b.dataset.d);
+    runTransaction(r(`${b.dataset.score}/score`), v => Math.max(0, (v || 0) + d)).catch(showError);
+    if (navigator.vibrate) navigator.vibrate(30);
+  };
+});
+
+// ─── Cronometro ─────────────────────────────────────────────────────────────
+$("start").onclick = () => {
+  const c = match.clock;
+  if (c.running) {
+    update(r("clock"), { running: false, elapsedMs: elapsedMs(c), startedAt: 0 }).catch(showError);
+  } else {
+    update(r("clock"), { running: true, startedAt: serverTimestamp() }).catch(showError);
+  }
+};
+
+document.querySelectorAll("[data-adj]").forEach(b => {
+  b.onclick = () => {
+    const c = match.clock;
+    const running = c.running ? serverNow() - c.startedAt : 0;
+    // elapsedMs può andare negativo mentre corre, purché il totale resti ≥ 0
+    const next = Math.max(-running, (c.elapsedMs || 0) + Number(b.dataset.adj));
+    update(r("clock"), { elapsedMs: next }).catch(showError);
+  };
+});
+
+// ─── Periodi ────────────────────────────────────────────────────────────────
+for (const p of PERIODS) {
+  const b = document.createElement("button");
+  b.textContent = p.label;
+  b.dataset.period = p.id;
+  b.onclick = () => {
+    if (p.id === match.period) return;
+    update(matchRef, {
+      period: p.id,
+      clock: { running: false, startedAt: 0, elapsedMs: 0 },
+    }).catch(showError);
+  };
+  $("periods").appendChild(b);
+}
+
+// ─── Impostazioni ───────────────────────────────────────────────────────────
+for (const k of ["periodMinutes", "extraMinutes"]) {
+  $(k).addEventListener("change", () => {
+    const v = Math.max(1, parseInt($(k).value, 10) || DEFAULT_MATCH.settings[k]);
+    set(r(`settings/${k}`), v).catch(showError);
+  });
+}
+
+document.querySelectorAll(".team-settings").forEach(box => {
+  const side = box.dataset.team;
+  box.querySelectorAll("[data-field]").forEach(input => {
+    input.addEventListener("change", () => {
+      let v = input.value;
+      if (input.dataset.field === "name") v = v.trim() || DEFAULT_MATCH[side].name;
+      if (v === CUSTOM) {
+        v = (prompt("Nome del file nella cartella loghi (es. logo_home.png):", match[side].logo) || "").trim();
+        if (!v) { render(); return; }
+      }
+      set(r(`${side}/${input.dataset.field}`), v).catch(showError);
+    });
+  });
+});
+
+$("swap").onclick = () => {
+  const { home, away } = match;
+  update(matchRef, { home: away, away: home }).catch(showError);
+};
+
+$("reset").onclick = () => {
+  if (!confirm("Azzerare punteggi, periodo e cronometro?")) return;
+  update(matchRef, {
+    "home/score": 0,
+    "away/score": 0,
+    period: "PRE",
+    clock: { running: false, startedAt: 0, elapsedMs: 0 },
+  }).catch(showError);
+};
+
+// ─── Loghi (cartella del repo GitHub) ───────────────────────────────────────
+async function loadLogos() {
+  const hint = $("logo-hint");
+  try {
+    const { owner, repo, path } = logoRepo;
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { cache: "no-store" });
+    if (res.status === 404) throw new Error(`cartella ${path}/ non ancora presente su GitHub: carica i loghi e fai push`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const items = await res.json();
+    logoFiles = items
+      .filter(f => f.type === "file" && /\.(png|jpe?g|webp|svg|gif)$/i.test(f.name))
+      .map(f => f.name)
+      .sort((a, b) => a.localeCompare(b));
+    hint.className = "hint";
+    hint.textContent = `${logoFiles.length} loghi trovati in ${path}/`;
+  } catch (err) {
+    hint.className = "hint err";
+    hint.textContent = "Impossibile leggere l'elenco loghi da GitHub (" + err.message + ").";
+  }
+  render();
+}
+
+function fillLogoSelect(select, current) {
+  const files = [...logoFiles];
+  if (current && !files.includes(current)) files.push(current);
+  const key = files.join("|");
+  if (select.dataset.key !== key) {
+    select.innerHTML = "";
+    select.append(new Option("— nessun logo —", ""));
+    for (const f of files) select.append(new Option(f, f));
+    select.append(new Option("✎ Scrivi nome file…", CUSTOM));
+    select.dataset.key = key;
+  }
+  select.value = current || "";
+}
+
+$("reload-logos").onclick = loadLogos;
+
+// ─── URL widget ─────────────────────────────────────────────────────────────
+$("widget-url").value = new URL("widget.html", location.href).href;
+$("copy-url").onclick = async () => {
+  try { await navigator.clipboard.writeText($("widget-url").value); $("copy-url").textContent = "Copiato!"; }
+  catch { $("widget-url").select(); }
+  setTimeout(() => { $("copy-url").textContent = "Copia"; }, 1500);
+};
+</script>
+</body>
+</html>
