@@ -21,7 +21,7 @@ I dati passano da Firebase Realtime Database (piano gratuito Spark): il widget s
 - **Telefono**: apri `https://hsteex.github.io/scoreboard/control.html`, accedi (il login resta salvato).
 - **OBS**: *Fonte → Browser* → URL `https://hsteex.github.io/scoreboard/widget.html`, larghezza ~1000, altezza ~100. Per ingrandire: `widget.html?scale=1.5` (e alza le dimensioni della fonte).
 - **Durata tempi**: nelle Impostazioni (default 40' tempo, 15' supplementare). Il 2° tempo riparte da 40:00; oltre la durata il tempo resta fermo e compare il recupero in giallo (`+1:23`).
-- **Loghi**: carica i file in `scoreboard/loghi/` (anche dal sito GitHub con *Add file → Upload files*), aspetta ~1 minuto che Pages li pubblichi, poi nel pannello premi *Aggiorna elenco loghi* e sceglili dal menu.
+- **Loghi**: PNG piccoli, **max 256×256 px**, nomi senza accenti né spazi (un logo 8000×8000 fa scattare Streamlabs). Carica i file in `scoreboard/loghi/` (anche dal sito GitHub con *Add file → Upload files*), aspetta ~1 minuto che Pages li pubblichi, poi nel pannello premi *Aggiorna elenco loghi* e sceglili dal menu.
 
 ## Prova in locale
 
