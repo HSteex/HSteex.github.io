@@ -151,6 +151,27 @@ if (scale > 0) root.style.setProperty("--scale", scale);
 let match = normalize(null);
 let first = true;
 
+// Riduce il logo alla dimensione mostrata, una volta sola: un PNG enorme
+// ridimensionato a ogni fotogramma rallenta le app di streaming.
+function loadSmallLogo(url) {
+  return new Promise((resolve, reject) => {
+    const src = new Image();
+    src.onload = () => {
+      const size = Math.ceil(44 * (scale > 0 ? scale : 1) * 2);
+      const k = Math.min(1, size / Math.max(src.naturalWidth, src.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(src.naturalWidth * k));
+      c.height = Math.max(1, Math.round(src.naturalHeight * k));
+      const ctx = c.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(src, 0, 0, c.width, c.height);
+      resolve(c.toDataURL("image/png"));
+    };
+    src.onerror = reject;
+    src.src = url;
+  });
+}
+
 // Se la lettura viene rifiutata (es. regole non ancora pubblicate) riprova
 function subscribe() {
   onValue(matchRef, onMatch, err => {
@@ -171,11 +192,14 @@ function onMatch(snap) {
 
     const img = $(`${side}-logo`);
     const url = logoUrl(t.logo);
-    if (!url) img.hidden = true;
-    else if (img.getAttribute("src") !== url) {
-      img.onload = () => { img.hidden = false; };
-      img.onerror = () => { img.hidden = true; };
-      img.src = url;
+    if (!url) { img.hidden = true; img.dataset.logo = ""; }
+    else if (img.dataset.logo !== url) {
+      img.dataset.logo = url;
+      loadSmallLogo(url).then(src => {
+        if (img.dataset.logo !== url) return;
+        img.src = src;
+        img.hidden = false;
+      }, () => { img.hidden = true; });
     }
 
     const el = $(`${side}-score`);
