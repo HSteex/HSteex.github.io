@@ -34,13 +34,10 @@
     background: var(--bg);
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-    transform: scale(var(--scale));
-    transform-origin: top left;
-    opacity: 0;
-    transition: opacity 0.4s;
+    zoom: var(--scale);
+    visibility: hidden;
   }
-  .board.ready { opacity: 1; }
+  .board.ready { visibility: visible; }
 
   .team {
     display: flex;
@@ -197,8 +194,14 @@ function onMatch(snap) {
   $("board").classList.add("ready");
 }
 
+// Tocca il DOM solo quando il testo cambia davvero (1 volta al secondo):
+// ogni modifica costringe il browser della sorgente a ridisegnare.
+let last = "";
 function tick() {
   const { main, extra } = clockDisplay(match);
+  const key = `${main}|${extra}|${$("period").textContent}`;
+  if (key === last) return;
+  last = key;
   $("time").textContent = main;
   $("time").hidden = !main;
   $("extra").textContent = extra;
