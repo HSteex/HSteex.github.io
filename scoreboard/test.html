@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test widget</title>
+<!--
+  Pagina di test per capire cosa rallenta la sorgente browser.
+  Parametri:
+    ?mode=static    solo testo fisso, nessun JavaScript che modifica la pagina
+    ?mode=timer     timer locale aggiornato 1 volta al secondo (default)
+    ?mode=firebase  solo connessione Firebase (mostra il punteggio), nessun timer
+    &bg=1           sfondo opaco invece che trasparente
+-->
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { background: transparent; overflow: hidden; }
+  body.opaque { background: #00b140; }
+  .box {
+    display: inline-block;
+    margin: 10px;
+    padding: 8px 16px;
+    background: #0e1016;
+    color: #fff;
+    font: 700 36px/1 sans-serif;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+  }
+  .mode { font-size: 14px; color: #9aa0ab; margin-left: 8px; }
+</style>
+</head>
+<body>
+<div class="box"><span id="out">00:00</span><span class="mode" id="mode"></span></div>
+
+<script type="module">
+const params = new URLSearchParams(location.search);
+const mode = params.get("mode") || "timer";
+if (params.get("bg") === "1") document.body.classList.add("opaque");
+document.getElementById("mode").textContent = mode;
+const out = document.getElementById("out");
+
+if (mode === "timer") {
+  const t0 = Date.now();
+  setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    out.textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  }, 1000);
+}
+
+if (mode === "firebase") {
+  const { onValue } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  const { matchRef } = await import("./common.js");
+  onValue(matchRef, snap => {
+    const m = snap.val() || {};
+    out.textContent = `${m.home?.score ?? 0} – ${m.away?.score ?? 0}`;
+  });
+}
+</script>
+</body>
+</html>
