@@ -10,13 +10,14 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --scale: 1;
     --bg: rgba(14, 16, 22, 0.92);
     --bg2: rgba(255, 255, 255, 0.06);
     --text: #f4f5f7;
     --muted: #9aa0ab;
     --home: #d32f2f;
+    --home2: #ffffff;
     --away: #1976d2;
+    --away2: #ffffff;
   }
 
   html, body { background: transparent; overflow: hidden; }
@@ -24,17 +25,21 @@
   body {
     font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
     color: var(--text);
-    padding: 10px;
   }
 
+  /* Il tabellone viene scalato via JS per stare tutto nella finestra */
   .board {
-    display: inline-flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
     align-items: stretch;
+    width: max-content;
     height: 64px;
     background: var(--bg);
     border-radius: 10px;
     overflow: hidden;
-    zoom: var(--scale);
+    transform-origin: top left;
     visibility: hidden;
   }
   .board.ready { visibility: visible; }
@@ -48,8 +53,8 @@
   .team.away { flex-direction: row-reverse; }
 
   .bar { align-self: stretch; width: 8px; margin: 0 -16px; flex-shrink: 0; }
-  .home .bar { background: var(--home); margin-right: 0; }
-  .away .bar { background: var(--away); margin-left: 0; }
+  .home .bar { background: linear-gradient(var(--home) 50%, var(--home2) 50%); margin-right: 0; }
+  .away .bar { background: linear-gradient(var(--away) 50%, var(--away2) 50%); margin-left: 0; }
 
   .logo { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
   .logo[hidden] { display: none; }
@@ -145,8 +150,21 @@ import { matchRef, normalize, periodInfo, clockDisplay, logoUrl } from "./common
 const $ = id => document.getElementById(id);
 const root = document.documentElement;
 
+// Di default il tabellone si adatta alla finestra della sorgente (OBS,
+// Streamlabs...), così non esce mai dai bordi. ?scale=1.5 forza una scala fissa.
 const scale = parseFloat(new URLSearchParams(location.search).get("scale"));
-if (scale > 0) root.style.setProperty("--scale", scale);
+let lastFit = "";
+function fit() {
+  const board = $("board");
+  const w = board.offsetWidth, h = board.offsetHeight;   // non influenzati da transform
+  const s = scale > 0 ? scale : Math.min(innerWidth / w, innerHeight / h);
+  const key = `${w}x${h}@${innerWidth}x${innerHeight}`;
+  if (key === lastFit || !(s > 0)) return;
+  lastFit = key;
+  board.style.transform = `scale(${s})`;
+}
+addEventListener("resize", fit);
+document.fonts?.ready.then(fit);
 
 let match = normalize(null);
 let first = true;
@@ -157,7 +175,7 @@ function loadSmallLogo(url) {
   return new Promise((resolve, reject) => {
     const src = new Image();
     src.onload = () => {
-      const size = Math.ceil(44 * (scale > 0 ? scale : 1) * 2);
+      const size = 176;   // 4× la dimensione mostrata: nitido anche se scalato
       const k = Math.min(1, size / Math.max(src.naturalWidth, src.naturalHeight));
       const c = document.createElement("canvas");
       c.width = Math.max(1, Math.round(src.naturalWidth * k));
@@ -189,6 +207,7 @@ function onMatch(snap) {
     const t = match[side];
     $(`${side}-name`).textContent = t.name;
     root.style.setProperty(`--${side}`, t.color);
+    root.style.setProperty(`--${side}2`, t.color2);
 
     const img = $(`${side}-logo`);
     const url = logoUrl(t.logo);
@@ -199,6 +218,7 @@ function onMatch(snap) {
         if (img.dataset.logo !== url) return;
         img.src = src;
         img.hidden = false;
+        fit();
       }, () => { img.hidden = true; });
     }
 
@@ -214,6 +234,7 @@ function onMatch(snap) {
   const p = periodInfo(match.period);
   $("period").textContent = p.id === "PRE" ? "" : p.short;
   first = false;
+  last = "";
   tick();
   $("board").classList.add("ready");
 }
@@ -230,6 +251,7 @@ function tick() {
   $("time").hidden = !main;
   $("extra").textContent = extra;
   $("clock-box").hidden = !main && !$("period").textContent;
+  fit();
 }
 setInterval(tick, 250);
 </script>

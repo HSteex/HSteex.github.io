@@ -19,8 +19,8 @@ export const PERIODS = [
 export const periodInfo = id => PERIODS.find(p => p.id === id) || PERIODS[0];
 
 export const DEFAULT_MATCH = {
-  home: { name: "Casa", color: "#d32f2f", logo: "", score: 0 },
-  away: { name: "Ospiti", color: "#1976d2", logo: "", score: 0 },
+  home: { name: "Casa", color: "#d32f2f", color2: "#ffffff", logo: "", score: 0 },
+  away: { name: "Ospiti", color: "#1976d2", color2: "#ffffff", logo: "", score: 0 },
   settings: { periodMinutes: 40, extraMinutes: 15 },
   period: "PRE",
   clock: { running: false, startedAt: 0, elapsedMs: 0 },

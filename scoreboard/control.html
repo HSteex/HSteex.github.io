@@ -20,6 +20,8 @@
     --warn: #ffd54a;
     --home: #d32f2f;
     --away: #1976d2;
+    --home2: #ffffff;
+    --away2: #ffffff;
   }
 
   body {
@@ -94,10 +96,14 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-bottom: 6px;
-    border-bottom: 4px solid var(--home);
+    padding-bottom: 12px;
+    --c1: var(--home); --c2: var(--home2);
+    /* striscia a due colori: c1 sopra, c2 sotto */
+    background:
+      linear-gradient(var(--c1) 0 0) left 0 bottom 3px / 100% 3px no-repeat,
+      linear-gradient(var(--c2) 0 0) left 0 bottom 0 / 100% 3px no-repeat;
   }
-  .away .team-name { border-color: var(--away); }
+  .away .team-name { --c1: var(--away); --c2: var(--away2); }
   .team-score { font-size: 3.6rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
   .plus { font-size: 1.6rem; padding: 18px; background: var(--home); border: none; }
   .away .plus { background: var(--away); }
@@ -223,9 +229,13 @@
         <h3>Squadra di casa</h3>
         <label>Nome</label>
         <input type="text" data-field="name" maxlength="40">
-        <label>Colore e logo</label>
+        <label>Colori (sopra / sotto)</label>
         <div class="row">
-          <input type="color" data-field="color">
+          <input type="color" data-field="color" title="Colore sopra">
+          <input type="color" data-field="color2" title="Colore sotto">
+        </div>
+        <label>Logo</label>
+        <div class="row">
           <select data-field="logo"></select>
           <img class="logo-preview" alt="" hidden>
         </div>
@@ -235,9 +245,13 @@
         <h3>Squadra ospite</h3>
         <label>Nome</label>
         <input type="text" data-field="name" maxlength="40">
-        <label>Colore e logo</label>
+        <label>Colori (sopra / sotto)</label>
         <div class="row">
-          <input type="color" data-field="color">
+          <input type="color" data-field="color" title="Colore sopra">
+          <input type="color" data-field="color2" title="Colore sotto">
+        </div>
+        <label>Logo</label>
+        <div class="row">
           <select data-field="logo"></select>
           <img class="logo-preview" alt="" hidden>
         </div>
@@ -257,7 +271,7 @@
       <input type="text" id="widget-url" readonly>
       <button id="copy-url">Copia</button>
     </div>
-    <p class="hint">OBS → Fonte → Browser → incolla l'URL (es. larghezza 1000, altezza 100). Aggiungi <code>?scale=1.5</code> per ingrandire.</p>
+    <p class="hint">OBS / Streamlabs → sorgente Browser → incolla l'URL. Il tabellone si adatta da solo alla dimensione della sorgente (es. 1000×100).</p>
   </section>
 
   <button class="danger" id="reset">Reset partita (punteggi, periodo, tempo)</button>
@@ -330,9 +344,10 @@ function render() {
     $(`${side}-name`).textContent = t.name;
     $(`${side}-score`).textContent = t.score;
     root.style.setProperty(`--${side}`, t.color);
+    root.style.setProperty(`--${side}2`, t.color2);
 
     const box = document.querySelector(`.team-settings[data-team="${side}"]`);
-    for (const field of ["name", "color"]) {
+    for (const field of ["name", "color", "color2"]) {
       const input = box.querySelector(`[data-field="${field}"]`);
       if (document.activeElement !== input) input.value = t[field];
     }
